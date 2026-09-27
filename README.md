@@ -1,4 +1,10 @@
-# LoadLite — Self-Hosted AWS Load Testing Platform
+# LoadLite — Closed-Loop AWS Load Testing Platform
+
+[![AWS Infrastructure](https://img.shields.io/badge/AWS-Serverless%20%26%20EC2-orange?style=flat&logo=amazon-aws)](https://aws.amazon.com)
+[![Terraform](https://img.shields.io/badge/IaC-Terraform%201.5+-purple?style=flat&logo=terraform)](https://www.terraform.io)
+[![Node.js](https://img.shields.io/badge/Runtime-Node.js%2020.x-green?style=flat&logo=node.js)](https://nodejs.org)
+[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-blue?style=flat&logo=react)](https://vitejs.dev)
+[![Region](https://img.shields.io/badge/Region-ap--south--1%20%7C%20us--east--1-red?style=flat)](https://aws.amazon.com)
 
 > [!CAUTION]
 > **CLOSED-LOOP SAFETY NOTICE**
@@ -8,38 +14,40 @@
 
 ## 1. System Architecture
 
-LoadLite is an automated, self-contained load benchmarking platform that ramps concurrency across stages and persists granular per-request metrics for analysis.
+LoadLite is a closed-loop distributed load testing platform built natively on AWS. It orchestrates Step Functions concurrency ladders, fires parallel Lambda generator fleets against a dedicated EC2 target, and plots live saturation curves with microsecond telemetry.
+
+![LoadLite System Architecture](architecture-diagram.jpg)
+
+### End-to-End Execution Flow
 
 ```mermaid
-flowchart TD
-    subgraph Orchestration ["Orchestration Layer"]
-        SFN["AWS Step Functions\n(Ramps Concurrency: 10 → 50 → 100)"]
-    end
+sequenceDiagram
+    autonumber
+    actor Engineer as Engineer / Dashboard
+    participant APIGW as Amazon API Gateway
+    participant SFN as Step Functions Orchestrator
+    participant Lambda as Distributed Lambda Fleet
+    participant Target as EC2 Target (Node.js Express)
+    participant DDB as DynamoDB (load_test_results)
+    participant Query as Lambda Query Handler
 
-    subgraph LoadGen ["Distributed Load Generator"]
-        LAMBDA["AWS Lambda Generator\n(Fires N Concurrent HTTP Requests)"]
+    Engineer->>APIGW: POST /start (stages: [5, 15, 25], duration: 5s)
+    APIGW->>SFN: StartExecution (run-xxxxxx)
+    loop Each Concurrency Stage
+        SFN->>Lambda: Invoke Workers in Parallel (N concurrency)
+        par Concurrent Load Generation
+            Lambda->>Target: GET /compute (CPU-bound) or /db or /health
+            Target-->>Lambda: HTTP Response (latency_ms, statusCode)
+            Lambda->>DDB: BatchWriteItem (25 items/batch with microsecond SK)
+        end
+        SFN->>SFN: Inter-stage Cooldown (2s)
     end
-
-    subgraph TargetApp ["Target Under Test (EC2)"]
-        EC2["EC2 Express API (t3.micro)\n/health | /compute | /db\nsystemd + CloudWatch Agent"]
+    loop Live Polling (Every 1.5s)
+        Engineer->>APIGW: GET /results?run_id=run-xxxxxx
+        APIGW->>Query: Aggregate Metrics
+        Query->>DDB: Query by run_id
+        Query-->>Engineer: Percentiles (p50, p90, p95, p99), Error Rate & Saturation Curve
     end
-
-    subgraph Storage ["Results Store"]
-        DDB["Amazon DynamoDB\n(load_test_results)\nPK: run_id | SK: timestamp"]
-    end
-
-    subgraph Presentation ["Presentation & Control"]
-        APIGW["Amazon API Gateway (HTTP)\n+ Query Lambda"]
-        DASH["React Dashboard (Vite)\nReal-time Metrics & Stage Charts"]
-    end
-
-    SFN -->|Invokes with stages & duration| LAMBDA
-    LAMBDA -->|Concurrent HTTP load| EC2
-    LAMBDA -->|Batch writes latency & status| DDB
-    DASH -->|POST /start test| APIGW
-    APIGW -->|Trigger execution| SFN
-    DASH -->|GET /results & /runs| APIGW
-    APIGW -->|Query aggregates| DDB
 ```
 
 ---
@@ -78,7 +86,10 @@ flowchart TD
   * `GET /runs` — Lists previous runs with summaries.
   * `GET /results?run_id=xxx` — Calculates p50, p90, p95, p99 percentiles, error rates, and second-by-second timelines.
   * `POST /start` — Triggers new Step Functions executions directly from the UI.
-* **Dashboard**: Modern glassmorphic dark-mode UI with live stage latency comparison charts and throughput timeline.
+* **Editorial Dashboard**: Handcrafted light-theme interface (warm paper palette, Fraunces serif, JetBrains Mono):
+  * **Live Target Pulse**: Real-time rolling SVG oscilloscope probing server health sequentially (1.5s interval) with responsive load state badges.
+  * **Server Latency & Saturation Curve**: Interactive SVG chart mapping tail latencies (p95) against median (p50) up to the 10,000ms timeout ceiling.
+  * **Live Test Plotting**: Polls intermediate DynamoDB batches every 1.5s so curves, request volumes, and failure rates plot live as each stage runs.
 
 ---
 
