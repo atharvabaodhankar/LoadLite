@@ -37,6 +37,10 @@ export default function App() {
   const [pingLoading, setPingLoading] = useState(false);
   const [pingResult, setPingResult] = useState(null);
 
+  // Live Heartbeat Stream State (Real-time target monitor)
+  const [heartbeatData, setHeartbeatData] = useState([]);
+  const [isLiveStreaming, setIsLiveStreaming] = useState(true);
+
   // 1. Fetch Runs
   const fetchRuns = async () => {
     setLoadingRuns(true);
@@ -57,9 +61,9 @@ export default function App() {
   };
 
   // 2. Fetch Results for Selected Run
-  const fetchResults = async (runId) => {
+  const fetchResults = async (runId, silent = false) => {
     if (!runId) return;
-    setLoadingResults(true);
+    if (!silent) setLoadingResults(true);
     try {
       const res = await fetch(`${API_BASE}/results?run_id=${encodeURIComponent(runId)}`);
       const data = await res.json();
@@ -69,7 +73,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to fetch results:', err);
     } finally {
-      setLoadingResults(false);
+      if (!silent) setLoadingResults(false);
     }
   };
 
@@ -83,7 +87,7 @@ export default function App() {
     }
   }, [selectedRunId]);
 
-  // 3. Execution Polling
+  // 3. Execution Polling (Polls Step Functions + Live DynamoDB results stream!)
   useEffect(() => {
     if (!activeExecution) return;
 
@@ -93,20 +97,63 @@ export default function App() {
         const data = await res.json();
         setExecutionStatus(data.status);
 
+        // Live update the results graph while test is actively running!
+        fetchResults(activeExecution.run_id, true);
+
         if (data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'TIMED_OUT') {
           clearInterval(interval);
           setIsLaunching(false);
           setActiveExecution(null);
           await fetchRuns();
           setSelectedRunId(activeExecution.run_id);
+          fetchResults(activeExecution.run_id);
         }
       } catch (err) {
         console.error('Polling error:', err);
       }
-    }, 2000);
+    }, 1500);
 
     return () => clearInterval(interval);
   }, [activeExecution]);
+
+  // 3b. Real-Time Live Server Heartbeat Stream (Every 1.2 seconds)
+  useEffect(() => {
+    if (!isLiveStreaming) return;
+
+    const streamInterval = setInterval(async () => {
+      const start = Date.now();
+      const pingUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? '/api/target/health'
+        : `${TARGET_URL}/health`;
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(pingUrl, { signal: controller.signal });
+        clearTimeout(timeout);
+        const latencyMs = Date.now() - start;
+        setHeartbeatData(prev => {
+          const next = [...prev, {
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            latencyMs,
+            status: res.status
+          }];
+          return next.slice(-28); // Keep last 28 points
+        });
+      } catch (err) {
+        const latencyMs = Date.now() - start;
+        setHeartbeatData(prev => {
+          const next = [...prev, {
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            latencyMs: Math.min(10000, latencyMs),
+            status: 0
+          }];
+          return next.slice(-28);
+        });
+      }
+    }, 1200);
+
+    return () => clearInterval(streamInterval);
+  }, [isLiveStreaming]);
 
   // 4. Launch New Load Test
   const handleLaunchTest = async () => {
@@ -116,6 +163,9 @@ export default function App() {
       .map(s => parseInt(s.trim(), 10))
       .filter(n => !isNaN(n) && n > 0);
     const runId = `run-${Date.now().toString().slice(-6)}`;
+
+    // Set selected run immediately so live graph is wired up
+    setSelectedRunId(runId);
 
     try {
       const res = await fetch(`${API_BASE}/start`, {
@@ -502,6 +552,127 @@ export default function App() {
 
           {/* ================= RIGHT COLUMN: ANALYTICS & FINDINGS ================= */}
           <div>
+            {/* Live Server Telemetry & Heartbeat Oscilloscope */}
+            <section className="editorial-panel" style={{ padding: '20px 24px', marginBottom: '28px', borderLeft: '3px solid var(--accent-burnt)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    borderRadius: '50%', 
+                    background: isLiveStreaming ? 'var(--status-green)' : 'var(--text-muted)',
+                    display: 'inline-block',
+                    boxShadow: isLiveStreaming ? '0 0 8px rgba(21, 128, 61, 0.6)' : 'none'
+                  }}></span>
+                  <span className="editorial-label" style={{ fontSize: '11px', color: 'var(--text-primary)' }}>
+                    Live Target Pulse
+                  </span>
+                  <span className="editorial-pill" style={{ fontSize: '10px' }}>
+                    1.2s rolling probe
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {heartbeatData.length > 0 && (
+                    <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', gap: '14px' }}>
+                      <span>Live: <strong style={{ 
+                        color: heartbeatData[heartbeatData.length - 1].latencyMs > 2000 ? 'var(--status-red)' : heartbeatData[heartbeatData.length - 1].latencyMs > 500 ? 'var(--accent-burnt)' : 'var(--status-green)'
+                      }}>{heartbeatData[heartbeatData.length - 1].latencyMs}ms</strong></span>
+                      <span style={{ color: 'var(--text-muted)' }}>Peak: {Math.max(...heartbeatData.map(h => h.latencyMs))}ms</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setIsLiveStreaming(!isLiveStreaming)}
+                    className="btn-editorial-secondary"
+                    style={{ fontSize: '11px', padding: '4px 10px' }}
+                  >
+                    {isLiveStreaming ? 'Pause Pulse' : 'Resume Pulse'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Oscilloscope Waveform */}
+              {heartbeatData.length > 1 ? (
+                <div>
+                  {(() => {
+                    const data = heartbeatData;
+                    const maxH = Math.max(100, ...data.map(d => d.latencyMs));
+                    const w = 720;
+                    const h = 80;
+                    const padL = 45;
+                    const padR = 20;
+                    const padT = 12;
+                    const padB = 18;
+                    const plotW = w - padL - padR;
+                    const plotH = h - padT - padB;
+
+                    const points = data.map((d, i) => ({
+                      x: padL + (i / (data.length - 1)) * plotW,
+                      y: padT + plotH - (Math.min(maxH, d.latencyMs) / maxH) * plotH,
+                      ms: d.latencyMs,
+                      status: d.status
+                    }));
+
+                    const area = `
+                      M ${points[0].x} ${padT + plotH}
+                      ${points.map(p => `L ${p.x} ${p.y}`).join(' ')}
+                      L ${points[points.length - 1].x} ${padT + plotH}
+                      Z
+                    `;
+                    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+                    return (
+                      <div style={{ width: '100%', overflowX: 'hidden' }}>
+                        <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+                          <defs>
+                            <linearGradient id="liveWave" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#b45309" stopOpacity="0.30" />
+                              <stop offset="100%" stopColor="#b45309" stopOpacity="0.01" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Grid line */}
+                          <line x1={padL} y1={padT + plotH} x2={w - padR} y2={padT + plotH} stroke="#e6e2d8" strokeWidth="1" />
+                          <line x1={padL} y1={padT} x2={w - padR} y2={padT} stroke="#f2efe8" strokeDasharray="3 3" />
+
+                          {/* Y-axis label */}
+                          <text x={padL - 8} y={padT + 7} textAnchor="end" fill="#8a8479" fontSize="9" fontFamily="var(--font-mono)">
+                            {maxH}ms
+                          </text>
+                          <text x={padL - 8} y={padT + plotH} textAnchor="end" fill="#8a8479" fontSize="9" fontFamily="var(--font-mono)">
+                            0ms
+                          </text>
+
+                          {/* Area & Line */}
+                          <path d={area} fill="url(#liveWave)" />
+                          <path d={line} fill="none" stroke="var(--accent-burnt)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                          {/* Latest Point Pulsing Dot */}
+                          {points.length > 0 && (
+                            <g>
+                              <circle 
+                                cx={points[points.length - 1].x} 
+                                cy={points[points.length - 1].y} 
+                                r="4.5" 
+                                fill="#ffffff" 
+                                stroke="var(--accent-burnt)" 
+                                strokeWidth="2.5" 
+                              />
+                            </g>
+                          )}
+                        </svg>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>
+                  Listening for server heartbeat pulses...
+                </div>
+              )}
+            </section>
+
             {loadingResults ? (
               <div className="editorial-panel" style={{ padding: '80px', textAlign: 'center' }}>
                 <RefreshCw size={24} className="spin-anim" style={{ color: 'var(--text-muted)', marginBottom: '14px' }} />
