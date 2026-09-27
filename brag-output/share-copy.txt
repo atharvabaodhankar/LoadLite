@@ -1,0 +1,40 @@
+# Share Copy for LoadLite Launch Video
+
+## LinkedIn (High Engagement & Narrative)
+What happens when you push an AWS EC2 instance past its absolute breaking point? 💥👇
+
+I built LoadLite — a closed-loop distributed load testing engine on AWS from scratch using Step Functions, a scalable Lambda worker fleet, and microsecond DynamoDB telemetry.
+
+In this 18-second video, you watch the server hit 100% CPU saturation live:
+• Baseline: Resting at a clean 113ms pulse
+• The Ramp: Step Functions fires distributed Lambda workers (10 → 50 → 100)
+• The Cliff: Tail latency spikes past 10,000ms, triggering the drop zone with a 91.76% failure rate
+
+100% Infrastructure-as-Code (Terraform). Zero SaaS dependencies.
+Break your servers before your users do.
+
+Repo: https://github.com/atharvabaodhankar/LoadLite
+#AWS #CloudEngineering #DevOps #SystemDesign #SoftwareEngineering #Terraform #Nodejs
+
+---
+
+## Twitter / X (Under 280 Characters)
+What happens when you push a server past its breaking point? 💥
+
+I built LoadLite — an automated closed-loop load testing engine on AWS. Watch an EC2 instance hit 100% CPU saturation and cliff-dive into 10,000ms timeouts live on video:
+
+https://github.com/atharvabaodhankar/LoadLite
+
+---
+
+## Discord / Slack (Casual & Direct)
+Just finished LoadLite — a self-hosted closed-loop load testing engine on AWS (Step Functions + Lambda fleet + DynamoDB). Made a quick 18s launch video showing an EC2 instance hitting 100% CPU saturation and 91% drop rate: https://github.com/atharvabaodhankar/LoadLite
+
+---
+
+## Reddit (r/aws, r/devops, r/programming)
+[Showcase] Built a closed-loop load testing platform on AWS with Step Functions and Lambda to visualize server saturation curves.
+
+Instead of testing black-box APIs, LoadLite owns both the generator fleet and the target app so you can watch exact failure dynamics in real time. Video shows latency climbing from 113ms to the 10,000ms timeout ceiling under a 100-worker ramp. 100% Terraform.
+
+Repo: https://github.com/atharvabaodhankar/LoadLite
