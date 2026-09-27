@@ -1,0 +1,11 @@
+{
+  "name": "load-test-query",
+  "version": "1.0.0",
+  "description": "API Gateway Lambda for reading results and triggering test runs",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.750.0",
+    "@aws-sdk/lib-dynamodb": "^3.750.0",
+    "@aws-sdk/client-sfn": "^3.750.0"
+  }
+}
