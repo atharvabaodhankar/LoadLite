@@ -116,43 +116,58 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activeExecution]);
 
-  // 3b. Real-Time Live Server Heartbeat Stream (Every 1.2 seconds)
+  // 3b. Real-Time Live Server Heartbeat Stream (Sequential polling to EC2 target)
   useEffect(() => {
     if (!isLiveStreaming) return;
+    let isActive = true;
+    let timerId = null;
 
-    const streamInterval = setInterval(async () => {
+    const probe = async () => {
       const start = Date.now();
       const pingUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? '/api/target/health'
         : `${TARGET_URL}/health`;
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000);
+        const timeout = setTimeout(() => controller.abort(), 5000);
         const res = await fetch(pingUrl, { signal: controller.signal });
         clearTimeout(timeout);
         const latencyMs = Date.now() - start;
-        setHeartbeatData(prev => {
-          const next = [...prev, {
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            latencyMs,
-            status: res.status
-          }];
-          return next.slice(-28); // Keep last 28 points
-        });
+        if (isActive) {
+          setHeartbeatData(prev => {
+            const next = [...prev, {
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              latencyMs,
+              status: res.status
+            }];
+            return next.slice(-28); // Keep last 28 points
+          });
+        }
       } catch (err) {
         const latencyMs = Date.now() - start;
-        setHeartbeatData(prev => {
-          const next = [...prev, {
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            latencyMs: Math.min(10000, latencyMs),
-            status: 0
-          }];
-          return next.slice(-28);
-        });
+        if (isActive) {
+          setHeartbeatData(prev => {
+            const next = [...prev, {
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              latencyMs: Math.min(6000, latencyMs),
+              status: 0
+            }];
+            return next.slice(-28);
+          });
+        }
+      } finally {
+        if (isActive) {
+          timerId = setTimeout(probe, 1500); // Wait 1.5s AFTER request finishes before probing again
+        }
       }
-    }, 1200);
+    };
 
-    return () => clearInterval(streamInterval);
+    probe();
+
+    return () => {
+      isActive = false;
+      if (timerId) clearTimeout(timerId);
+    };
   }, [isLiveStreaming]);
 
   // 4. Launch New Load Test
@@ -568,19 +583,36 @@ export default function App() {
                     Live Target Pulse
                   </span>
                   <span className="editorial-pill" style={{ fontSize: '10px' }}>
-                    1.2s rolling probe
+                    EC2 t3.micro &bull; /health
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {heartbeatData.length > 0 && (
-                    <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', gap: '14px' }}>
-                      <span>Live: <strong style={{ 
-                        color: heartbeatData[heartbeatData.length - 1].latencyMs > 2000 ? 'var(--status-red)' : heartbeatData[heartbeatData.length - 1].latencyMs > 500 ? 'var(--accent-burnt)' : 'var(--status-green)'
-                      }}>{heartbeatData[heartbeatData.length - 1].latencyMs}ms</strong></span>
-                      <span style={{ color: 'var(--text-muted)' }}>Peak: {Math.max(...heartbeatData.map(h => h.latencyMs))}ms</span>
-                    </div>
-                  )}
+                  {heartbeatData.length > 0 && (() => {
+                    const latest = heartbeatData[heartbeatData.length - 1];
+                    const isSaturated = latest.latencyMs >= 2000;
+                    const isDegraded = latest.latencyMs >= 600 && latest.latencyMs < 2000;
+                    return (
+                      <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <span style={{
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          padding: '2px 7px',
+                          borderRadius: '3px',
+                          background: isSaturated ? 'rgba(185, 28, 28, 0.1)' : isDegraded ? 'rgba(180, 83, 9, 0.1)' : 'rgba(21, 128, 61, 0.1)',
+                          color: isSaturated ? 'var(--status-red)' : isDegraded ? 'var(--accent-burnt)' : 'var(--status-green)',
+                          fontWeight: 600
+                        }}>
+                          {isSaturated ? 'Saturated / Queued' : isDegraded ? 'Load Elevating' : 'Responsive'}
+                        </span>
+                        <span>Live: <strong style={{ 
+                          color: isSaturated ? 'var(--status-red)' : isDegraded ? 'var(--accent-burnt)' : 'var(--status-green)'
+                        }}>{latest.latencyMs}ms</strong></span>
+                        <span style={{ color: 'var(--text-muted)' }}>Peak: {Math.max(...heartbeatData.map(h => h.latencyMs))}ms</span>
+                      </div>
+                    );
+                  })()}
 
                   <button
                     onClick={() => setIsLiveStreaming(!isLiveStreaming)}
