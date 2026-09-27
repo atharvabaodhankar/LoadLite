@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region for resources"
   type        = string
-  default     = "us-east-1"
+  default     = "ap-south-1"
 }
 
 variable "instance_type" {
@@ -13,11 +13,11 @@ variable "instance_type" {
 variable "vpc_id" {
   description = "VPC ID to deploy EC2 target instance in"
   type        = string
-  default     = "vpc-030c2c8c80e830fd1"
+  default     = "vpc-0a50c4d555316818b"
 }
 
 variable "subnet_id" {
   description = "Subnet ID to deploy EC2 target instance in"
   type        = string
-  default     = "subnet-073fce45cc7b6d77d"
+  default     = "subnet-087c95d27386f017f"
 }
