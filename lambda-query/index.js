@@ -252,6 +252,34 @@ exports.handler = async (event) => {
       });
     }
 
+    // 6. GET /ping?path=/compute - Probe target EC2 server-side with CORS
+    if (path.endsWith('/ping') && method === 'GET') {
+      const queryParams = event.queryStringParameters || {};
+      const targetPath = queryParams.path || '/health';
+      const targetUrl = `${TARGET_APP_BASE_URL}${targetPath}`;
+      const startTime = Date.now();
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const fetchRes = await fetch(targetUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const json = await fetchRes.json();
+        return response(200, {
+          path: targetPath,
+          status: fetchRes.status,
+          latencyMs: Date.now() - startTime,
+          data: json
+        });
+      } catch (err) {
+        return response(200, {
+          path: targetPath,
+          status: 'Error',
+          latencyMs: Date.now() - startTime,
+          error: err.message
+        });
+      }
+    }
+
     return response(404, { error: `Not found: ${method} ${path}` });
   } catch (error) {
     console.error('Handler error:', error);

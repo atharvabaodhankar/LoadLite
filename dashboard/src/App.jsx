@@ -139,12 +139,15 @@ export default function App() {
     }
   };
 
-  // 5. Target App Direct Ping
+  // 5. Target App Direct Ping (via dev proxy to avoid browser CORS)
   const handlePingTarget = async (testPath = '/health') => {
     setPingLoading(true);
     const start = Date.now();
     try {
-      const res = await fetch(`${TARGET_URL}${testPath}`, { mode: 'cors' });
+      const pingUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? `/api/target${testPath}`
+        : `${TARGET_URL}${testPath}`;
+      const res = await fetch(pingUrl);
       const json = await res.json();
       setPingResult({
         path: testPath,
