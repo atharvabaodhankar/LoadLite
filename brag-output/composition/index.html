@@ -174,11 +174,11 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="18"
+      data-duration="23.5"
       data-width="1920"
       data-height="1080"
     >
-      <audio id="bgm" src="assets/music.mp3" data-start="0" data-duration="18" preload="auto"></audio>
+      <audio id="bgm" src="assets/soundtrack.mp3" data-start="0" data-duration="23.5" preload="auto"></audio>
       <!-- Top Masthead Navigation -->
       <header class="masthead">
         <div style="display: flex; align-items: baseline; gap: 18px;">
@@ -412,57 +412,57 @@
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
 
-      // ================= TIMELINE ANIMATION (18.0 seconds total) =================
+      // ================= TIMELINE ANIMATION (23.5 seconds total) =================
       
-      // SCENE 1: (0.0s -> 3.8s)
+      // SCENE 1: The Provocation (0.0s -> 4.8s) [Voice: "What happens when you push an AWS server past its breaking point?"]
       tl.set("#scene-1", { opacity: 1, pointerEvents: "auto" }, 0);
       tl.fromTo("#hook-badge", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.2);
       tl.fromTo("#hook-title", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.4);
-      tl.fromTo("#hook-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.7);
-      tl.fromTo("#hook-pulse", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power2.out" }, 1.1);
+      tl.fromTo("#hook-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.8);
+      tl.fromTo("#hook-pulse", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power2.out" }, 1.3);
 
-      // Transition Scene 1 -> Scene 2 (3.8s)
-      tl.to("#scene-1", { opacity: 0, y: -30, duration: 0.5, ease: "power2.in" }, 3.8);
+      // Transition Scene 1 -> Scene 2 (4.8s)
+      tl.to("#scene-1", { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, 4.7);
 
-      // SCENE 2: Concurrency Ramp (4.2s -> 8.5s)
-      tl.set("#scene-2", { opacity: 1, pointerEvents: "auto" }, 4.3);
-      tl.fromTo("#scene-2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 4.3);
+      // SCENE 2: The Concurrency Ramp (4.8s -> 10.8s) [Voice: "We trigger AWS Step Functions, escalating distributed Lambda workers in parallel."]
+      tl.set("#scene-2", { opacity: 1, pointerEvents: "auto" }, 5.0);
+      tl.fromTo("#scene-2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 5.0);
       
       // Simulate button click
-      tl.to("#ramp-button", { scale: 0.95, duration: 0.15, yoyo: true, repeat: 1 }, 5.2);
-      tl.to("#sfn-status", { background: "rgba(21, 128, 61, 0.1)", color: "#15803d", onStart: () => { const el = document.getElementById("sfn-status"); if (el) el.innerText = "SFN: EXECUTING"; }, duration: 0.3 }, 5.5);
+      tl.to("#ramp-button", { scale: 0.95, duration: 0.15, yoyo: true, repeat: 1 }, 5.8);
+      tl.to("#sfn-status", { background: "rgba(21, 128, 61, 0.1)", color: "#15803d", onStart: () => { const el = document.getElementById("sfn-status"); if (el) el.innerText = "SFN: EXECUTING"; }, duration: 0.3 }, 6.2);
       
       // Stage boxes activate
-      tl.to("#stage-box-1", { scale: 1.03, duration: 0.3, yoyo: true, repeat: 1 }, 5.8);
-      tl.to("#stage-box-2", { opacity: 1, scale: 1.05, duration: 0.4 }, 6.6);
-      tl.to("#stage-box-3", { opacity: 1, scale: 1.08, duration: 0.4 }, 7.6);
+      tl.to("#stage-box-1", { scale: 1.03, duration: 0.3, yoyo: true, repeat: 1 }, 6.8);
+      tl.to("#stage-box-2", { opacity: 1, scale: 1.05, duration: 0.4 }, 8.2);
+      tl.to("#stage-box-3", { opacity: 1, scale: 1.08, duration: 0.4 }, 9.5);
 
-      // Transition Scene 2 -> Scene 3 (8.5s)
-      tl.to("#scene-2", { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, 8.5);
+      // Transition Scene 2 -> Scene 3 (10.8s)
+      tl.to("#scene-2", { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, 10.8);
 
-      // SCENE 3: The Breaking Point / Saturated (8.9s -> 13.8s)
-      tl.set("#scene-3", { opacity: 1, pointerEvents: "auto" }, 8.9);
-      tl.fromTo("#scene-3", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 8.9);
+      // SCENE 3: The Breaking Point / Saturated (11.0s -> 18.6s) [Voice: "At peak concurrency, the EC2 event loop completely saturates, and latency spikes past 10,000 milliseconds."]
+      tl.set("#scene-3", { opacity: 1, pointerEvents: "auto" }, 11.0);
+      tl.fromTo("#scene-3", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 11.0);
 
       // Numbers count up dramatically
-      tl.fromTo("#stat-volume", { innerText: "0" }, { innerText: "1894", snap: { innerText: 1 }, duration: 1.8, ease: "power2.out" }, 9.2);
-      tl.fromTo("#stat-p50", { innerText: "113ms" }, { innerText: "10022ms", duration: 2.0, ease: "power3.inOut" }, 9.5);
-      tl.fromTo("#stat-p95", { innerText: "240ms" }, { innerText: "10235ms", duration: 2.2, ease: "power3.inOut" }, 9.7);
-      tl.fromTo("#stat-fail", { innerText: "0%" }, { innerText: "91.76%", duration: 2.0, ease: "power2.out" }, 10.0);
+      tl.fromTo("#stat-volume", { innerText: "0" }, { innerText: "1894", snap: { innerText: 1 }, duration: 2.5, ease: "power2.out" }, 11.5);
+      tl.fromTo("#stat-p50", { innerText: "113ms" }, { innerText: "10022ms", duration: 3.0, ease: "power3.inOut" }, 12.0);
+      tl.fromTo("#stat-p95", { innerText: "240ms" }, { innerText: "10235ms", duration: 3.2, ease: "power3.inOut" }, 12.5);
+      tl.fromTo("#stat-fail", { innerText: "0%" }, { innerText: "91.76%", duration: 2.8, ease: "power2.out" }, 13.0);
 
-      // Transition Scene 3 -> Scene 4 (13.8s)
-      tl.to("#scene-3", { opacity: 0, y: -30, duration: 0.5, ease: "power2.in" }, 13.8);
+      // Transition Scene 3 -> Scene 4 (18.6s)
+      tl.to("#scene-3", { opacity: 0, y: -30, duration: 0.4, ease: "power2.in" }, 18.6);
 
-      // SCENE 4: Outro & Architecture (14.3s -> 18.0s)
-      tl.set("#scene-4", { opacity: 1, pointerEvents: "auto" }, 14.3);
-      tl.fromTo("#outro-pill", { opacity: 0, y: -15 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 14.3);
-      tl.fromTo("#outro-heading", { opacity: 0, y: 25 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 14.5);
-      tl.fromTo("#outro-sub", { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 14.8);
-      tl.fromTo("#outro-arch", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power2.out" }, 15.1);
-      tl.fromTo("#outro-logo", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 15.6);
+      // SCENE 4: Outro & Architecture (18.8s -> 23.5s) [Voice: "LoadLite. Break your servers before production does."]
+      tl.set("#scene-4", { opacity: 1, pointerEvents: "auto" }, 18.8);
+      tl.fromTo("#outro-pill", { opacity: 0, y: -15 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 18.8);
+      tl.fromTo("#outro-heading", { opacity: 0, y: 25 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 19.1);
+      tl.fromTo("#outro-sub", { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 19.4);
+      tl.fromTo("#outro-arch", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power2.out" }, 19.8);
+      tl.fromTo("#outro-logo", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 20.4);
 
-      // Fade out to black at very end (17.5s -> 18.0s)
-      tl.to("#root", { opacity: 0.95, duration: 0.5 }, 17.5);
+      // Fade out to black at very end (23.0s -> 23.5s)
+      tl.to("#root", { opacity: 0.95, duration: 0.5 }, 23.0);
 
       window.__timelines["main"] = tl;
       tl.seek(0);
