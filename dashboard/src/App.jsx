@@ -590,8 +590,8 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   {heartbeatData.length > 0 && (() => {
                     const latest = heartbeatData[heartbeatData.length - 1];
-                    const isSaturated = latest.latencyMs >= 2000;
-                    const isDegraded = latest.latencyMs >= 600 && latest.latencyMs < 2000;
+                    const isSaturated = latest.latencyMs >= 2500;
+                    const isDegraded = latest.latencyMs >= 1200 && latest.latencyMs < 2500;
                     return (
                       <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <span style={{
