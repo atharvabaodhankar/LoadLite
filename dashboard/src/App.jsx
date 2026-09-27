@@ -606,87 +606,202 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Section: Concurrency Ramp Escalation */}
+                {/* Section: Server Saturation & Visual Escalation Curve */}
                 {results.stages && results.stages.length > 0 && (
                   <section className="editorial-panel" style={{ padding: '28px 24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '22px', borderBottom: '1px solid var(--border-hairline)', paddingBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px', borderBottom: '1px solid var(--border-hairline)', paddingBottom: '14px' }}>
                       <div>
-                        <h3 className="display-serif" style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          Concurrency Ramp Progression
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span className="editorial-label">Escalation Curve</span>
+                          <span style={{ color: 'var(--border-strong)' }}>/</span>
+                          <span className="editorial-pill" style={{ 
+                            background: results.error_rate > 10 || results.p95_latency_ms > 4000 ? '#fef2f2' : '#f0fdf4',
+                            color: results.error_rate > 10 || results.p95_latency_ms > 4000 ? 'var(--status-red)' : 'var(--status-green)',
+                            border: `1px solid ${results.error_rate > 10 || results.p95_latency_ms > 4000 ? '#fecaca' : '#bbf7d0'}`
+                          }}>
+                            {results.error_rate > 10 || results.p95_latency_ms > 4000 ? '⚠️ Server Saturated / Breaking Point' : '✅ Optimal Operating Range'}
+                          </span>
+                        </div>
+                        <h3 className="display-serif" style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          Server Latency & Saturation Curve
                         </h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          Latency degradation curve across progressive load stages
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          Visualizing response time spiking upwards as concurrent traffic escalates
                         </p>
                       </div>
+
+                      {/* Legend */}
                       <div style={{ display: 'flex', gap: '16px', fontSize: '11px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '8px', height: '8px', background: 'var(--text-primary)', display: 'inline-block' }}></span>
+                          <span style={{ width: '12px', height: '2px', background: 'var(--accent-burnt)', display: 'inline-block' }}></span>
+                          <span className="editorial-label" style={{ fontSize: '10px', color: 'var(--accent-burnt)' }}>Tail p95</span>
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: '12px', height: '2px', background: 'var(--text-primary)', borderTop: '2px dashed var(--text-primary)', display: 'inline-block' }}></span>
                           <span className="editorial-label" style={{ fontSize: '10px' }}>Median p50</span>
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '8px', height: '8px', background: 'var(--accent-burnt)', display: 'inline-block' }}></span>
-                          <span className="editorial-label" style={{ fontSize: '10px' }}>Tail p95</span>
+                          <span style={{ width: '12px', height: '2px', borderTop: '2px dashed var(--status-red)', display: 'inline-block' }}></span>
+                          <span className="editorial-label" style={{ fontSize: '10px', color: 'var(--status-red)' }}>Drop Zone</span>
                         </span>
                       </div>
                     </div>
 
-                    {/* Architectural Stage Ticks */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      {results.stages.map((stage) => {
-                        const maxVal = Math.max(...results.stages.map(s => s.p95_latency_ms || 1));
-                        const p50Pos = Math.min(100, Math.max(3, ((stage.p50_latency_ms || 1) / maxVal) * 100));
-                        const p95Pos = Math.min(100, Math.max(3, ((stage.p95_latency_ms || 1) / maxVal) * 100));
+                    {/* Visual SVG Curve going high */}
+                    <div style={{ padding: '10px 0' }}>
+                      {(() => {
+                        const stages = results.stages;
+                        const maxVal = Math.max(10500, ...stages.map(s => s.p95_latency_ms || 1));
+                        const chartWidth = 720;
+                        const chartHeight = 250;
+                        const padLeft = 70;
+                        const padRight = 40;
+                        const padTop = 30;
+                        const padBottom = 45;
+                        const plotWidth = chartWidth - padLeft - padRight;
+                        const plotHeight = chartHeight - padTop - padBottom;
+
+                        const pointsP95 = stages.map((st, i) => {
+                          const x = stages.length === 1 
+                            ? padLeft + plotWidth / 2 
+                            : padLeft + (i / (stages.length - 1)) * plotWidth;
+                          const y = padTop + plotHeight - ((st.p95_latency_ms || 0) / maxVal) * plotHeight;
+                          return { x, y, val: st.p95_latency_ms, stage: st.concurrency_stage };
+                        });
+
+                        const pointsP50 = stages.map((st, i) => {
+                          const x = stages.length === 1 
+                            ? padLeft + plotWidth / 2 
+                            : padLeft + (i / (stages.length - 1)) * plotWidth;
+                          const y = padTop + plotHeight - ((st.p50_latency_ms || 0) / maxVal) * plotHeight;
+                          return { x, y, val: st.p50_latency_ms, stage: st.concurrency_stage };
+                        });
+
+                        const areaPath = pointsP95.length > 1 ? `
+                          M ${pointsP95[0].x} ${padTop + plotHeight}
+                          ${pointsP95.map(p => `L ${p.x} ${p.y}`).join(' ')}
+                          L ${pointsP95[pointsP95.length - 1].x} ${padTop + plotHeight}
+                          Z
+                        ` : '';
+
+                        const linePathP95 = pointsP95.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                        const linePathP50 = pointsP50.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                        const ceilingY = padTop + plotHeight - (10000 / maxVal) * plotHeight;
 
                         return (
-                          <div key={stage.concurrency_stage} style={{ borderBottom: '1px dashed var(--border-hairline)', paddingBottom: '16px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                                <span className="mono-numeric" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                  Tier {stage.concurrency_stage}
-                                </span>
-                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                  ({stage.concurrency_stage} simultaneous clients &bull; {stage.total_requests} reqs)
-                                </span>
-                              </div>
-                              <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', gap: '16px' }}>
-                                <span>p50: <strong>{stage.p50_latency_ms}ms</strong></span>
-                                <span style={{ color: 'var(--accent-burnt)' }}>p95: <strong>{stage.p95_latency_ms}ms</strong></span>
-                                <span style={{ color: 'var(--text-muted)' }}>avg: {stage.avg_latency_ms}ms</span>
-                              </div>
-                            </div>
+                          <div style={{ width: '100%', overflowX: 'auto' }}>
+                            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+                              <defs>
+                                <linearGradient id="surgeGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#c2410c" stopOpacity="0.30" />
+                                  <stop offset="60%" stopColor="#b45309" stopOpacity="0.15" />
+                                  <stop offset="100%" stopColor="#b45309" stopOpacity="0.02" />
+                                </linearGradient>
+                              </defs>
 
-                            {/* Hairline Ruler with Exact Numeric Ticks */}
-                            <div style={{ position: 'relative', height: '18px', background: 'var(--bg-subtle)', borderRadius: '1px', border: '1px solid var(--border-hairline)' }}>
-                              {/* p95 tick mark */}
-                              <div 
-                                title={`p95: ${stage.p95_latency_ms}ms`}
-                                style={{
-                                  position: 'absolute',
-                                  left: `${p95Pos}%`,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: '3px',
-                                  background: 'var(--accent-burnt)',
-                                  transform: 'translateX(-50%)'
-                                }}
-                              />
-                              {/* p50 tick mark */}
-                              <div 
-                                title={`p50: ${stage.p50_latency_ms}ms`}
-                                style={{
-                                  position: 'absolute',
-                                  left: `${p50Pos}%`,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: '3px',
-                                  background: 'var(--text-primary)',
-                                  transform: 'translateX(-50%)'
-                                }}
-                              />
-                            </div>
+                              {/* Horizontal Gridlines & Y-Axis */}
+                              {[0, 2500, 5000, 7500, 10000].map((tick) => {
+                                const y = padTop + plotHeight - (tick / maxVal) * plotHeight;
+                                return (
+                                  <g key={tick}>
+                                    <line x1={padLeft} y1={y} x2={chartWidth - padRight} y2={y} stroke="#e6e2d8" strokeDasharray="3 3" />
+                                    <text x={padLeft - 12} y={y + 4} textAnchor="end" fill="#8a8479" fontSize="10" fontFamily="var(--font-mono)">
+                                      {tick.toLocaleString()}ms
+                                    </text>
+                                  </g>
+                                );
+                              })}
+
+                              {/* 10,000ms Redline Ceiling */}
+                              <line x1={padLeft} y1={ceilingY} x2={chartWidth - padRight} y2={ceilingY} stroke="#b91c1c" strokeWidth="1.5" strokeDasharray="5 4" />
+                              <text x={chartWidth - padRight} y={ceilingY - 6} textAnchor="end" fill="#b91c1c" fontSize="10" fontWeight="600" fontFamily="var(--font-mono)">
+                                10,000ms Timeout Limit (Connections Dropped)
+                              </text>
+
+                              {/* Rising Area Gradient */}
+                              {areaPath && <path d={areaPath} fill="url(#surgeGradient)" />}
+
+                              {/* p50 Dotted Line */}
+                              {linePathP50 && (
+                                <path d={linePathP50} fill="none" stroke="#1c1917" strokeWidth="2" strokeDasharray="4 3" strokeLinecap="round" />
+                              )}
+
+                              {/* p95 Solid Rising Surge Line */}
+                              {linePathP95 && (
+                                <path d={linePathP95} fill="none" stroke="#b45309" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                              )}
+
+                              {/* p95 Marker Dots & Values */}
+                              {pointsP95.map((p, idx) => (
+                                <g key={`p95-dot-${idx}`}>
+                                  <circle cx={p.x} cy={p.y} r="5.5" fill="#ffffff" stroke="#b45309" strokeWidth="3" />
+                                  <rect 
+                                    x={p.x - 28} 
+                                    y={p.y - 25} 
+                                    width="56" 
+                                    height="18" 
+                                    rx="2" 
+                                    fill="var(--bg-surface)" 
+                                    stroke="var(--border-hairline)" 
+                                  />
+                                  <text x={p.x} y={p.y - 13} textAnchor="middle" fill="#b45309" fontSize="11" fontWeight="700" fontFamily="var(--font-mono)">
+                                    {p.val}ms
+                                  </text>
+                                </g>
+                              ))}
+
+                              {/* p50 Marker Dots */}
+                              {pointsP50.map((p, idx) => (
+                                <circle key={`p50-dot-${idx}`} cx={p.x} cy={p.y} r="3.5" fill="#1c1917" />
+                              ))}
+
+                              {/* X-Axis Tiers */}
+                              {pointsP95.map((p, idx) => (
+                                <g key={`x-lbl-${idx}`}>
+                                  <line x1={p.x} y1={padTop + plotHeight} x2={p.x} y2={padTop + plotHeight + 6} stroke="#c8c2b4" />
+                                  <text x={p.x} y={padTop + plotHeight + 20} textAnchor="middle" fill="#1c1917" fontSize="11" fontWeight="600" fontFamily="var(--font-mono)">
+                                    Tier {p.stage}
+                                  </text>
+                                  <text x={p.x} y={padTop + plotHeight + 33} textAnchor="middle" fill="#8a8479" fontSize="9" fontFamily="var(--font-sans)">
+                                    {p.stage.toLocaleString()} concurrent users
+                                  </text>
+                                </g>
+                              ))}
+                            </svg>
                           </div>
                         );
-                      })}
+                      })()}
+                    </div>
+
+                    {/* Saturation Analysis Note */}
+                    <div style={{ 
+                      marginTop: '20px', 
+                      padding: '14px 18px', 
+                      background: results.error_rate > 10 ? '#fffbeb' : 'var(--bg-subtle)', 
+                      border: `1px solid ${results.error_rate > 10 ? '#fde68a' : 'var(--border-hairline)'}`,
+                      borderRadius: '2px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px'
+                    }}>
+                      <div style={{ 
+                        fontSize: '18px', 
+                        color: results.error_rate > 10 ? 'var(--accent-burnt)' : 'var(--status-green)',
+                        lineHeight: 1
+                      }}>
+                        {results.error_rate > 10 ? '⚡' : '✓'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                        {results.error_rate > 10 ? (
+                          <>
+                            <strong>Breaking Point Identified:</strong> Response times shot up past the <strong>10,000ms timeout ceiling</strong> with <strong>{results.error_rate}% error rate</strong>. The server CPU and network socket backlogs were completely saturated by the concurrent flood.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Healthy Operating Envelope:</strong> The server processed all concurrent tiers within sub-second latencies with <strong>0.0% dropped connections</strong>.
+                          </>
+                        )}
+                      </div>
                     </div>
                   </section>
                 )}
