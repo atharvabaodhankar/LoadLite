@@ -15,8 +15,8 @@ import {
   CornerDownRight
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_GATEWAY_URL || 'https://fnjnyxtvxi.execute-api.us-east-1.amazonaws.com';
-const TARGET_URL = import.meta.env.VITE_TARGET_APP_URL || 'http://44.200.70.13:3000';
+const API_BASE = import.meta.env.VITE_API_GATEWAY_URL || 'https://637e6fe800.execute-api.ap-south-1.amazonaws.com';
+const TARGET_URL = import.meta.env.VITE_TARGET_APP_URL || 'http://15.206.190.14:3000';
 
 export default function App() {
   const [runs, setRuns] = useState([]);
@@ -269,14 +269,14 @@ export default function App() {
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-green)' }}></span>
               <span className="editorial-label" style={{ fontSize: '10px' }}>Target:</span>
               <span className="mono-numeric" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                44.200.70.13:3000
+                {TARGET_URL.replace(/^https?:\/\//, '')}
               </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
               <span className="editorial-label" style={{ fontSize: '10px' }}>Region:</span>
               <span className="mono-numeric" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                us-east-1
+                ap-south-1
               </span>
             </div>
 
@@ -590,8 +590,8 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   {heartbeatData.length > 0 && (() => {
                     const latest = heartbeatData[heartbeatData.length - 1];
-                    const isSaturated = latest.latencyMs >= 2500;
-                    const isDegraded = latest.latencyMs >= 1200 && latest.latencyMs < 2500;
+                    const isSaturated = latest.latencyMs >= 1500;
+                    const isDegraded = latest.latencyMs >= 300 && latest.latencyMs < 1500;
                     return (
                       <div className="mono-numeric" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <span style={{
